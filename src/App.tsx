@@ -7,6 +7,7 @@ import { Menu } from 'lucide-react';
 // Calculator Imports
 import ChillerTonnage from './components/calculators/ChillerTonnage';
 import FanPower from './components/calculators/FanPower';
+import PsychrometricChart from './components/calculators/PsychrometricChart';
 import RoomLumen from './components/calculators/RoomLumen';
 import LPDCalculator from './components/calculators/LPDCalculator';
 import PipeVelocity from './components/calculators/PipeVelocity';
@@ -36,6 +37,12 @@ const CALCULATOR_REGISTRY: Record<string, {
     category: 'HVAC',
     description: 'Calculate fan Brake Horsepower (BHP), electrical input kW, and combined efficiency based on static pressure and airflow.',
     component: FanPower
+  },
+  'psychrometric': {
+    title: 'Psychrometric Chart Properties',
+    category: 'HVAC',
+    description: 'Calculate wet bulb, dew point, enthalpy, specific volume, and humidity ratio. Plot and view air states directly on the chart.',
+    component: PsychrometricChart
   },
   'room-lumen': {
     title: 'Lighting Lumen Method (Room Calc)',

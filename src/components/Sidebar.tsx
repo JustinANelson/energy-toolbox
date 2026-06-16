@@ -33,6 +33,12 @@ export const TOOLS: Tool[] = [
     description: 'Calculate fan Brake Horsepower (BHP), motor input power, and system airflow.'
   },
   {
+    id: 'psychrometric',
+    name: 'Psychrometric Chart',
+    category: 'HVAC',
+    description: 'Calculate wet bulb, dew point, enthalpy, and specific volume. Click inside the dynamic chart to plot air states.'
+  },
+  {
     id: 'room-lumen',
     name: 'Room Calc (Lumen)',
     category: 'Lighting',
