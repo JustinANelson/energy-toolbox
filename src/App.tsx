@@ -8,6 +8,7 @@ import { Menu } from 'lucide-react';
 import ChillerTonnage from './components/calculators/ChillerTonnage';
 import FanPower from './components/calculators/FanPower';
 import PsychrometricChart from './components/calculators/PsychrometricChart';
+import RoomLoadEstimator from './components/calculators/RoomLoadEstimator';
 import RoomLumen from './components/calculators/RoomLumen';
 import LPDCalculator from './components/calculators/LPDCalculator';
 import PipeVelocity from './components/calculators/PipeVelocity';
@@ -43,6 +44,12 @@ const CALCULATOR_REGISTRY: Record<string, {
     category: 'HVAC',
     description: 'Calculate wet bulb, dew point, enthalpy, specific volume, and humidity ratio. Plot and view air states directly on the chart.',
     component: PsychrometricChart
+  },
+  'room-load': {
+    title: 'Room Heat & Cool Load Estimator',
+    category: 'HVAC',
+    description: 'Calculate peak heating and cooling loads (sensible and latent) based on structural components, design temperatures, and internal heat loads.',
+    component: RoomLoadEstimator
   },
   'room-lumen': {
     title: 'Lighting Lumen Method (Room Calc)',

@@ -39,6 +39,12 @@ export const TOOLS: Tool[] = [
     description: 'Calculate wet bulb, dew point, enthalpy, and specific volume. Click inside the dynamic chart to plot air states.'
   },
   {
+    id: 'room-load',
+    name: 'Room Load Estimator',
+    category: 'HVAC',
+    description: 'Calculate peak heating and cooling loads (sensible and latent) for a room or zone.'
+  },
+  {
     id: 'room-lumen',
     name: 'Room Calc (Lumen)',
     category: 'Lighting',
