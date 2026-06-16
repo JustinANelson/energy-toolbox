@@ -8,7 +8,8 @@ import {
   Zap, 
   Search, 
   ChevronRight, 
-  Cpu
+  Cpu,
+  X
 } from 'lucide-react';
 
 export interface Tool {
@@ -111,9 +112,11 @@ export const CATEGORIES: Record<string, Category> = {
 interface SidebarProps {
   activeToolId: string;
   onSelectTool: (id: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export default function Sidebar({ activeToolId, onSelectTool }: SidebarProps) {
+export default function Sidebar({ activeToolId, onSelectTool, isOpen, onClose }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredTools = TOOLS.filter(tool =>
@@ -132,18 +135,31 @@ export default function Sidebar({ activeToolId, onSelectTool }: SidebarProps) {
   });
 
   return (
-    <aside className="w-80 flex-shrink-0 border-r border-slate-800 bg-slate-950 flex flex-col h-screen sticky top-0">
+    <aside className={`w-80 flex-shrink-0 border-r border-slate-800 bg-slate-950 flex flex-col h-screen fixed lg:sticky top-0 left-0 z-40 transition-transform duration-300 ease-in-out ${
+      isOpen ? 'translate-x-0' : '-translate-x-full'
+    } lg:translate-x-0`}>
       {/* Brand Header */}
-      <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <Cpu className="w-6 h-6 animate-pulse" />
+      <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <Cpu className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-white m-0 leading-tight">
+              EnergyToolbox
+            </h1>
+            <p className="text-xs text-slate-400 font-medium">Professional Engineering Suite</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-white m-0 leading-tight">
-            EnergyToolbox
-          </h1>
-          <p className="text-xs text-slate-400 font-medium">Professional Engineering Suite</p>
-        </div>
+
+        {/* Close Button on Mobile */}
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-all border border-transparent hover:border-slate-800"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Search Section */}

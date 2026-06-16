@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import CalculatorCard from './components/CalculatorCard';
 import { getActiveToolFromUrl, setActiveToolInUrl } from './utils/queryParams';
+import { Menu } from 'lucide-react';
 
 // Calculator Imports
 import ChillerTonnage from './components/calculators/ChillerTonnage';
@@ -106,27 +107,56 @@ export default function App() {
     }
     return 'chiller-tonnage';
   });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Update active tool ID and update URL
   const handleSelectTool = (id: string) => {
     setActiveToolId(id);
     setActiveToolInUrl(id);
+    setIsMobileMenuOpen(false); // Close sidebar on mobile after selection
   };
 
   const activeTool = CALCULATOR_REGISTRY[activeToolId] || CALCULATOR_REGISTRY['chiller-tonnage'];
   const CalcComponent = activeTool.component;
 
   return (
-    <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans">
-      {/* Fixed Sidebar */}
-      <Sidebar activeToolId={activeToolId} onSelectTool={handleSelectTool} />
+    <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans overflow-x-hidden">
+      {/* Backdrop overlay for mobile menu */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-30 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar with mobile toggle state */}
+      <Sidebar 
+        activeToolId={activeToolId} 
+        onSelectTool={handleSelectTool} 
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
 
       {/* Main Workspace Scrollable Container */}
-      <main className="flex-1 overflow-y-auto min-h-screen pb-12">
+      <main className="flex-1 overflow-y-auto min-h-screen pb-12 w-full">
         {/* Top Glow Decorator */}
         <div className="h-[2px] bg-gradient-to-r from-emerald-500 via-sky-500 to-purple-500 w-full"></div>
         
-        <div className="p-6 md:p-8 space-y-6">
+        {/* Mobile Top Header */}
+        <header className="lg:hidden flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-bold text-white tracking-tight">EnergyToolbox</span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono">v1.2.0</span>
+        </header>
+
+        <div className="p-4 md:p-8 space-y-6">
           {/* Main Card */}
           <CalculatorCard
             title={activeTool.title}
