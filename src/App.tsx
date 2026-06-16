@@ -10,8 +10,10 @@ import RoomLumen from './components/calculators/RoomLumen';
 import LPDCalculator from './components/calculators/LPDCalculator';
 import PipeVelocity from './components/calculators/PipeVelocity';
 import SteamPipe from './components/calculators/SteamPipe';
+import CoolingTowerWater from './components/calculators/CoolingTowerWater';
 import BoilerEfficiency from './components/calculators/BoilerEfficiency';
 import CompressedAir from './components/calculators/CompressedAir';
+import SteamTrapLeak from './components/calculators/SteamTrapLeak';
 import SimplePayback from './components/calculators/SimplePayback';
 import CarbonEmissions from './components/calculators/CarbonEmissions';
 
@@ -58,6 +60,12 @@ const CALCULATOR_REGISTRY: Record<string, {
     description: 'Calculate saturated steam velocity, specific volume, and temperature to check pipe sizing against acoustic erosion limits.',
     component: SteamPipe
   },
+  'cooling-tower-water': {
+    title: 'Cooling Tower Water Balance',
+    category: 'District Energy',
+    description: 'Calculate water balance, evaporation, blowdown, and potential savings from optimizing cycles of concentration.',
+    component: CoolingTowerWater
+  },
   'boiler-efficiency': {
     title: 'Boiler Combustion Efficiency',
     category: 'O&M',
@@ -69,6 +77,12 @@ const CALCULATOR_REGISTRY: Record<string, {
     category: 'O&M',
     description: 'Determine energy waste, compressor kW overhead, and annual costs incurred from air leaks through orifices.',
     component: CompressedAir
+  },
+  'steam-trap-leak': {
+    title: 'Steam Trap Leak Cost',
+    category: 'O&M',
+    description: 'Calculate steam loss, fuel waste, carbon footprint, and costs from failed steam traps.',
+    component: SteamTrapLeak
   },
   'simple-payback': {
     title: 'Simple Payback & Investment ROI',

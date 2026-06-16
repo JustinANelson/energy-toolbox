@@ -56,6 +56,12 @@ export const TOOLS: Tool[] = [
     description: 'Calculate steam velocity, carrying capacity, and pressure drop.'
   },
   {
+    id: 'cooling-tower-water',
+    name: 'Cooling Tower Water',
+    category: 'District Energy',
+    description: 'Calculate water balance, evaporation, blowdown, and cycles of concentration savings.'
+  },
+  {
     id: 'boiler-efficiency',
     name: 'Boiler Efficiency',
     category: 'O&M',
@@ -66,6 +72,12 @@ export const TOOLS: Tool[] = [
     name: 'Compressed Air Leaks',
     category: 'O&M',
     description: 'Determine annual cost and energy losses from compressed air system leaks.'
+  },
+  {
+    id: 'steam-trap-leak',
+    name: 'Steam Trap Leak Cost',
+    category: 'O&M',
+    description: 'Calculate steam loss, fuel waste, carbon footprint, and costs from failed steam traps.'
   },
   {
     id: 'simple-payback',
