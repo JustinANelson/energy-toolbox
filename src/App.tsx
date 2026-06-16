@@ -19,6 +19,8 @@ import CompressedAir from './components/calculators/CompressedAir';
 import SteamTrapLeak from './components/calculators/SteamTrapLeak';
 import SimplePayback from './components/calculators/SimplePayback';
 import CarbonEmissions from './components/calculators/CarbonEmissions';
+import LangelierSatIndex from './components/calculators/LangelierSatIndex';
+import WaterPurityTemp from './components/calculators/WaterPurityTemp';
 
 // Map tool ID to details and component
 const CALCULATOR_REGISTRY: Record<string, {
@@ -110,6 +112,18 @@ const CALCULATOR_REGISTRY: Record<string, {
     category: 'Energy',
     description: 'Determine Scope 1 and Scope 2 greenhouse gas emissions (MT CO2e) with trees and miles equivalencies.',
     component: CarbonEmissions
+  },
+  'langelier-index': {
+    title: 'Langelier Saturation Index (LSI)',
+    category: 'Water Quality',
+    description: 'Determine water scaling and corrosive tendencies using LSI and Ryznar indices.',
+    component: LangelierSatIndex
+  },
+  'water-purity': {
+    title: 'Ultrapure Water & RO Membrane',
+    category: 'Water Quality',
+    description: 'Convert resistivity/conductivity with temperature correction and calculate RO membrane recovery and salt rejection.',
+    component: WaterPurityTemp
   }
 };
 

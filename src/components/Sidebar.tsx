@@ -9,7 +9,8 @@ import {
   Search, 
   ChevronRight, 
   Cpu,
-  X
+  X,
+  FlaskConical
 } from 'lucide-react';
 
 export interface Tool {
@@ -103,6 +104,18 @@ export const TOOLS: Tool[] = [
     name: 'Carbon Footprint',
     category: 'Energy',
     description: 'Calculate Scope 1 and Scope 2 greenhouse gas emissions.'
+  },
+  {
+    id: 'langelier-index',
+    name: 'Langelier Index (LSI)',
+    category: 'Water Quality',
+    description: 'Determine water scaling and corrosive tendencies using LSI and Ryznar indices.'
+  },
+  {
+    id: 'water-purity',
+    name: 'Ultrapure Water & RO',
+    category: 'Water Quality',
+    description: 'Convert resistivity/conductivity with temperature correction and calculate RO membrane recovery.'
   }
 ];
 
@@ -117,6 +130,7 @@ export const CATEGORIES: Record<string, Category> = {
   'Lighting': { name: 'Lighting', icon: Lightbulb, color: 'text-amber-400 bg-amber-500/10' },
   'District Energy': { name: 'District Energy', icon: Droplets, color: 'text-blue-400 bg-blue-500/10' },
   'O&M': { name: 'O&M', icon: Wrench, color: 'text-emerald-400 bg-emerald-500/10' },
+  'Water Quality': { name: 'Water Quality', icon: FlaskConical, color: 'text-cyan-400 bg-cyan-500/10' },
   'Financial': { name: 'Financial', icon: DollarSign, color: 'text-purple-400 bg-purple-500/10' },
   'Energy': { name: 'Energy', icon: Zap, color: 'text-red-400 bg-red-500/10' }
 };
