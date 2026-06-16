@@ -9,6 +9,7 @@ import ChillerTonnage from './components/calculators/ChillerTonnage';
 import FanPower from './components/calculators/FanPower';
 import PsychrometricChart from './components/calculators/PsychrometricChart';
 import RoomLoadEstimator from './components/calculators/RoomLoadEstimator';
+import AhuRunningCost from './components/calculators/AhuRunningCost';
 import RoomLumen from './components/calculators/RoomLumen';
 import LPDCalculator from './components/calculators/LPDCalculator';
 import PipeVelocity from './components/calculators/PipeVelocity';
@@ -52,6 +53,12 @@ const CALCULATOR_REGISTRY: Record<string, {
     category: 'HVAC',
     description: 'Calculate peak heating and cooling loads (sensible and latent) based on structural components, design temperatures, and internal heat loads.',
     component: RoomLoadEstimator
+  },
+  'ahu-cost': {
+    title: 'AHU Operating Cost Calculator',
+    category: 'HVAC',
+    description: 'Estimate the annual operational costs of an Air Handling Unit (AHU), including fan power, cooling systems (DX vs. CHW), and heating systems (Hot Water vs. Steam).',
+    component: AhuRunningCost
   },
   'room-lumen': {
     title: 'Lighting Lumen Method (Room Calc)',

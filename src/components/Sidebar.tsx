@@ -46,6 +46,12 @@ export const TOOLS: Tool[] = [
     description: 'Calculate peak heating and cooling loads (sensible and latent) for a room or zone.'
   },
   {
+    id: 'ahu-cost',
+    name: 'AHU Operating Cost',
+    category: 'HVAC',
+    description: 'Calculate the annual operating cost of an air handler (fans, cooling source, and heating source).'
+  },
+  {
     id: 'room-lumen',
     name: 'Room Calc (Lumen)',
     category: 'Lighting',
