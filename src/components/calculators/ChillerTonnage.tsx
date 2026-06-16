@@ -52,13 +52,13 @@ export default function ChillerTonnage() {
         <div className="space-y-2">
           <div className="flex justify-between">
             <label className="text-sm font-semibold text-slate-300">Chilled Water Flow</label>
-            <span className="text-sm font-bold text-emerald-400">{flow} GPM</span>
+            <span className="text-sm font-bold text-emerald-400">{flow.toLocaleString()} GPM</span>
           </div>
           <input
             type="range"
             min="10"
-            max="1000"
-            step="5"
+            max="40000"
+            step="50"
             value={flow}
             onChange={(e) => handleChange('flow', parseInt(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
@@ -119,13 +119,13 @@ export default function ChillerTonnage() {
         <div className="space-y-2">
           <div className="flex justify-between">
             <label className="text-sm font-semibold text-slate-300">Compressor Electrical Load</label>
-            <span className="text-sm font-bold text-purple-400">{power} kW</span>
+            <span className="text-sm font-bold text-purple-400">{power.toLocaleString()} kW</span>
           </div>
           <input
             type="range"
             min="10"
-            max="500"
-            step="5"
+            max="20000"
+            step="50"
             value={power}
             onChange={(e) => handleChange('power', parseInt(e.target.value))}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -148,8 +148,8 @@ export default function ChillerTonnage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cooling Capacity</p>
-            <p className="text-2xl font-black text-emerald-400 mt-1">{tonnage.toFixed(1)} Tons</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">{(capacityBtuHr / 1000).toFixed(0)} kBTU/hr</p>
+            <p className="text-2xl font-black text-emerald-400 mt-1">{tonnage.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Tons</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{(capacityBtuHr / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} kBTU/hr</p>
           </div>
           <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Efficiency Rating</p>
@@ -180,23 +180,23 @@ export default function ChillerTonnage() {
             <polygon points="120,60 110,55 110,65" fill="#f87171" />
             <text x="35" y="48" fill="#f87171" fontSize="10" fontWeight="bold">Warm In</text>
             <text x="35" y="78" fill="#f87171" fontSize="11" fontWeight="extrabold">{tempIn.toFixed(0)}°F</text>
-
+ 
             {/* Cold Loop (Leaving) */}
             <path d="M 120 120 L 20 120" fill="none" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round" />
             <polygon points="20,120 30,115 30,125" fill="#38bdf8" />
             <text x="35" y="108" fill="#38bdf8" fontSize="10" fontWeight="bold">Chilled Out</text>
             <text x="35" y="138" fill="#38bdf8" fontSize="11" fontWeight="extrabold">{tempOut.toFixed(0)}°F</text>
-
+ 
             {/* Water Flow Animation Indicator */}
             <circle cx="70" cy="60" r="3" fill="#ffffff" className="animate-ping" />
             <circle cx="70" cy="120" r="3" fill="#ffffff" className="animate-ping" />
-
+ 
             {/* Compressor Electricity Inlet */}
             <path d="M 200 180 L 200 140" fill="none" stroke="#c084fc" strokeWidth="4" strokeDasharray="4 2" />
-            <text x="250" y="165" fill="#c084fc" fontSize="10" fontWeight="bold" textAnchor="middle">{power.toFixed(0)} kW input</text>
-
+            <text x="250" y="165" fill="#c084fc" fontSize="10" fontWeight="bold" textAnchor="middle">{power.toLocaleString()} kW input</text>
+ 
             {/* Cooling output labels */}
-            <text x="200" y="30" fill="#34d399" fontSize="12" fontWeight="extrabold" textAnchor="middle">{tonnage.toFixed(1)} Tons Cooling Capacity</text>
+            <text x="200" y="30" fill="#34d399" fontSize="12" fontWeight="extrabold" textAnchor="middle">{tonnage.toLocaleString(undefined, { maximumFractionDigits: 1 })} Tons Cooling Capacity</text>
           </svg>
         </div>
       </div>
