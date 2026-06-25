@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Share2, Check } from 'lucide-react';
+import { Share2, Check, BookOpen } from 'lucide-react';
 import { copyShareLink } from '../utils/queryParams';
 
 interface CalculatorCardProps {
   title: string;
   category: string;
   description: string;
+  source?: string;
   children: React.ReactNode;
 }
 
@@ -13,6 +14,7 @@ export default function CalculatorCard({
   title,
   category,
   description,
+  source,
   children,
 }: CalculatorCardProps) {
   const [copied, setCopied] = useState(false);
@@ -70,6 +72,15 @@ export default function CalculatorCard({
       <div className="w-full">
         {children}
       </div>
+
+      {/* Source Footer */}
+      {source && (
+        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-800/60 pt-4 px-2 select-none">
+          <BookOpen className="w-3.5 h-3.5 text-emerald-500/80" />
+          <span>Reference Standard:</span>
+          <span className="text-slate-400 italic font-medium">{source}</span>
+        </div>
+      )}
     </div>
   );
 }
