@@ -25,6 +25,12 @@ const DEFAULTS = {
   heatHours: 2000, // hrs/yr
   elecRate: 0.12, // $/kWh
   gasRate: 1.20, // $/therm
+  gasRateUnit: 'therm', // 'therm' or 'ccf'
+  useSpaceLoad: false,
+  spaceCoolingLoad: 216000, // Btu/hr
+  spaceHeatingLoad: 324000, // Btu/hr
+  useSpaceLoadTimeframe: false,
+  spaceLoadTimeframe: 0, // Btu/hr
 };
 
 const patm = 14.696; // Standard atmospheric pressure in psi
@@ -108,6 +114,12 @@ export default function AhuRunningCost() {
     heatHours,
     elecRate,
     gasRate,
+    gasRateUnit,
+    useSpaceLoad,
+    spaceCoolingLoad,
+    spaceHeatingLoad,
+    useSpaceLoadTimeframe,
+    spaceLoadTimeframe,
   } = state;
 
   useEffect(() => {
@@ -176,7 +188,32 @@ export default function AhuRunningCost() {
   const matSummer = isOaUnit ? oatSummer : oatSummer * (currentOaFraction / 100) + ratSummer * (1 - currentOaFraction / 100);
   const matWinter = isOaUnit ? oatWinter : oatWinter * (currentOaFraction / 100) + ratWinter * (1 - currentOaFraction / 100);
 
-  const coolingdT = Math.max(0, matSummer - satSummer);
+  // Load-based calculations for Annual Mode
+  let calculatedSatSummer = satSummer;
+  let calculatedSatWinter = satWinter;
+  let satSummerClamped = false;
+  let satWinterClamped = false;
+
+  if (useSpaceLoad) {
+    // satSummer = ratSummer - spaceCoolingLoad / (1.08 * cfm)
+    const rawSatSummer = ratSummer - spaceCoolingLoad / (1.08 * cfm);
+    calculatedSatSummer = Math.max(50, Math.min(ratSummer, rawSatSummer));
+    if (rawSatSummer < 50 || rawSatSummer > ratSummer) {
+      satSummerClamped = true;
+    }
+
+    // satWinter = ratWinter + spaceHeatingLoad / (1.08 * cfm)
+    const rawSatWinter = ratWinter + spaceHeatingLoad / (1.08 * cfm);
+    calculatedSatWinter = Math.max(ratWinter, Math.min(120, rawSatWinter));
+    if (rawSatWinter < ratWinter || rawSatWinter > 120) {
+      satWinterClamped = true;
+    }
+  }
+
+  const effectiveSatSummer = useSpaceLoad ? calculatedSatSummer : satSummer;
+  const effectiveSatWinter = useSpaceLoad ? calculatedSatWinter : satWinter;
+
+  const coolingdT = Math.max(0, matSummer - effectiveSatSummer);
   const coolLoadSens = 1.08 * cfm * coolingdT;
   const coolLoadTotal = coolLoadSens / 0.75; // assume 0.75 SHR
   const coolTons = coolLoadTotal / 12000;
@@ -189,7 +226,7 @@ export default function AhuRunningCost() {
   }
   const annualCoolCost = coolKw * coolHours * elecRate;
 
-  const heatingdT = Math.max(0, satWinter - matWinter);
+  const heatingdT = Math.max(0, effectiveSatWinter - matWinter);
   const heatLoad = 1.08 * cfm * heatingdT; // Btu/hr
 
   let annualHeatCost = 0;
@@ -198,9 +235,11 @@ export default function AhuRunningCost() {
   if (heatingSource === 'water') {
     const boilerEffDec = waterBoilerEff / 100;
     const gasInputBtuHr = heatLoad / boilerEffDec;
-    const thermsHr = gasInputBtuHr / 100000;
-    heatInputValue = thermsHr * heatHours;
-    heatInputUnit = 'therms/yr';
+    const isCcf = gasRateUnit === 'ccf';
+    const divisor = isCcf ? 103700 : 100000;
+    const fuelHr = gasInputBtuHr / divisor;
+    heatInputValue = fuelHr * heatHours;
+    heatInputUnit = isCcf ? 'CCU/yr' : 'therms/yr';
     annualHeatCost = heatInputValue * gasRate;
   } else {
     const steamLbsHr = heatLoad / 1000;
@@ -357,14 +396,25 @@ export default function AhuRunningCost() {
       let coolCost = 0;
       let heatCost = 0;
 
-      if (mat > datSetpoint) {
+      // Required supply temp (DAT) to maintain ratSetpoint under spaceLoadTimeframe
+      let targetDat = datSetpoint;
+      let rawTargetDat = datSetpoint;
+      let targetDatClamped = false;
+
+      if (useSpaceLoadTimeframe) {
+        rawTargetDat = ratSetpoint - spaceLoadTimeframe / (1.08 * cfm);
+        targetDat = Math.max(50, Math.min(120, rawTargetDat));
+        targetDatClamped = rawTargetDat < 50 || rawTargetDat > 120;
+      }
+
+      if (mat > targetDat) {
         // Cooling required
-        const W_sat_dat = getSatW(datSetpoint);
+        const W_sat_dat = getSatW(targetDat);
         const leavingW = Math.min(W_ma, W_sat_dat);
-        const h_da = getEnthalpy(datSetpoint, leavingW);
+        const h_da = getEnthalpy(targetDat, leavingW);
 
         q_cool_total = Math.max(0, 4.5 * cfm * (h_ma - h_da));
-        q_cool_sens = Math.max(0, 1.08 * cfm * (mat - datSetpoint));
+        q_cool_sens = Math.max(0, 1.08 * cfm * (mat - targetDat));
         q_cool_latent = Math.max(0, q_cool_total - q_cool_sens);
 
         const tons = q_cool_total / 12000;
@@ -374,14 +424,16 @@ export default function AhuRunningCost() {
           coolKwTimeframe = tons * chillerKwPerTon;
         }
         coolCost = coolKwTimeframe * 1 * elecRate;
-      } else if (mat < datSetpoint) {
+      } else if (mat < targetDat) {
         // Heating required
-        q_heat = Math.max(0, 1.08 * cfm * (datSetpoint - mat));
+        q_heat = Math.max(0, 1.08 * cfm * (targetDat - mat));
 
         if (heatingSource === 'water') {
           const boilerEffDec = waterBoilerEff / 100;
           const gasInputBtuHr = q_heat / boilerEffDec;
-          heatFuelInput = gasInputBtuHr / 100000; // therms/hr
+          const isCcf = gasRateUnit === 'ccf';
+          const divisor = isCcf ? 103700 : 100000;
+          heatFuelInput = gasInputBtuHr / divisor; // therms/hr or CCU/hr
           heatCost = heatFuelInput * 1 * gasRate;
         } else {
           const steamLbsHr = q_heat / 1000;
@@ -410,7 +462,9 @@ export default function AhuRunningCost() {
         h_ma,
         maRh,
         tdp_ma,
-        dat: datSetpoint,
+        dat: targetDat,
+        datRequired: rawTargetDat,
+        datClamped: targetDatClamped,
         q_cool_total,
         q_cool_sens,
         q_cool_latent,
@@ -457,6 +511,9 @@ export default function AhuRunningCost() {
     steamRate,
     elecRate,
     gasRate,
+    gasRateUnit,
+    useSpaceLoadTimeframe,
+    spaceLoadTimeframe,
   ]);
 
   // --- Timeframe totals ---
@@ -872,14 +929,15 @@ export default function AhuRunningCost() {
               </div>
               {heatingSource === 'water' ? (
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-slate-400">Gas Rate ($/therm)</label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    value={gasRate}
-                    onChange={(e) => handleChange('gasRate', Math.max(0, parseFloat(e.target.value) || 0))}
+                  <label className="text-[10px] font-semibold text-slate-400">Gas Rate Unit</label>
+                  <select
+                    value={gasRateUnit}
+                    onChange={(e) => handleChange('gasRateUnit', e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
-                  />
+                  >
+                    <option value="therm">Therms ($/therm)</option>
+                    <option value="ccf">CCU / CCF ($/CCU)</option>
+                  </select>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -894,6 +952,22 @@ export default function AhuRunningCost() {
                 </div>
               )}
             </div>
+            {heatingSource === 'water' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-slate-400">
+                    Gas Rate ({gasRateUnit === 'ccf' ? '$/CCU' : '$/therm'})
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={gasRate}
+                    onChange={(e) => handleChange('gasRate', Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 4. Equipment Efficiencies */}
@@ -961,6 +1035,169 @@ export default function AhuRunningCost() {
               </div>
             </div>
           </div>
+
+          {/* 5. Design Conditions & Space Loads (Annual Mode Only) */}
+          {activeTab === 'annual' && (
+            <div className="space-y-4 pt-3 border-t border-slate-900">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">5. Design Conditions & Space Loads</h4>
+              
+              {/* Design Temps Accordion/Inputs */}
+              <div className="space-y-3">
+                <h5 className="text-[10px] font-bold text-slate-350 uppercase block">A. Design Temperatures (°F)</h5>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Summer OAT</label>
+                    <input
+                      type="number"
+                      value={oatSummer}
+                      onChange={(e) => handleChange('oatSummer', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Summer RAT</label>
+                    <input
+                      type="number"
+                      value={ratSummer}
+                      onChange={(e) => handleChange('ratSummer', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Summer DAT</label>
+                    <input
+                      type="number"
+                      value={useSpaceLoad ? Math.round(effectiveSatSummer) : satSummer}
+                      disabled={useSpaceLoad}
+                      onChange={(e) => handleChange('satSummer', parseInt(e.target.value) || 0)}
+                      className={`w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none ${
+                        useSpaceLoad && 'opacity-50 cursor-not-allowed text-emerald-400 font-bold'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Winter OAT</label>
+                    <input
+                      type="number"
+                      value={oatWinter}
+                      onChange={(e) => handleChange('oatWinter', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Winter RAT</label>
+                    <input
+                      type="number"
+                      value={ratWinter}
+                      onChange={(e) => handleChange('ratWinter', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-semibold text-slate-400">Winter DAT</label>
+                    <input
+                      type="number"
+                      value={useSpaceLoad ? Math.round(effectiveSatWinter) : satWinter}
+                      disabled={useSpaceLoad}
+                      onChange={(e) => handleChange('satWinter', parseInt(e.target.value) || 0)}
+                      className={`w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none ${
+                        useSpaceLoad && 'opacity-50 cursor-not-allowed text-orange-400 font-bold'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Space Load Toggle & Slider/Inputs */}
+              <div className="space-y-3 pt-2 border-t border-slate-900">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-350 uppercase">B. Space Load Control</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useSpaceLoad}
+                      onChange={(e) => handleChange('useSpaceLoad', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600 peer-checked:after:bg-white"></div>
+                  </label>
+                </div>
+
+                {useSpaceLoad ? (
+                  <div className="space-y-3 bg-slate-900/30 p-3 rounded-lg border border-slate-850">
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <label className="text-[10px] font-semibold text-slate-400">Space Sensible Cooling Load</label>
+                        <span className="text-[10px] font-bold text-emerald-400">
+                          {spaceCoolingLoad.toLocaleString()} Btu/h ({(spaceCoolingLoad / 12000).toFixed(1)} Tons)
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="12000"
+                        max="600000"
+                        step="12000"
+                        value={spaceCoolingLoad}
+                        onChange={(e) => handleChange('spaceCoolingLoad', parseInt(e.target.value))}
+                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <label className="text-[10px] font-semibold text-slate-400">Space Sensible Heating Load</label>
+                        <span className="text-[10px] font-bold text-orange-400">
+                          {spaceHeatingLoad.toLocaleString()} Btu/h
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="12000"
+                        max="600000"
+                        step="12000"
+                        value={spaceHeatingLoad}
+                        onChange={(e) => handleChange('spaceHeatingLoad', parseInt(e.target.value))}
+                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-orange-500"
+                      />
+                    </div>
+
+                    {/* Calculated DAT results & Warnings */}
+                    <div className="text-[10px] space-y-1 pt-1.5 border-t border-slate-900/60">
+                      <div className="flex justify-between">
+                        <span className="text-slate-450">Calculated Summer DAT:</span>
+                        <span className={`font-bold ${satSummerClamped ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {effectiveSatSummer.toFixed(1)}°F {satSummerClamped && '(Clamped)'}
+                        </span>
+                      </div>
+                      {satSummerClamped && (
+                        <p className="text-[9px] text-amber-500 font-medium text-left">
+                          * Required DAT went outside [50°F, {ratSummer}°F]. Consider increasing CFM or lowering cooling load.
+                        </p>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-slate-450">Calculated Winter DAT:</span>
+                        <span className={`font-bold ${satWinterClamped ? 'text-amber-400' : 'text-orange-400'}`}>
+                          {effectiveSatWinter.toFixed(1)}°F {satWinterClamped && '(Clamped)'}
+                        </span>
+                      </div>
+                      {satWinterClamped && (
+                        <p className="text-[9px] text-amber-500 font-medium text-left">
+                          * Required DAT went outside [{ratWinter}°F, 120°F]. Consider increasing CFM or lowering heating load.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500 italic text-left">
+                    Enable space load control to automatically calculate supply temperatures based on the thermal needs of the space.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Columns: Renders depending on Mode tab */}
@@ -1049,7 +1286,10 @@ export default function AhuRunningCost() {
                   <text x="280" y="32" fill="#cbd5e1" fontSize="8" fontWeight="bold" textAnchor="middle">FAN</text>
                   <text x="280" y="128" fill="#94a3b8" fontSize="7" textAnchor="middle">{fanKw.toFixed(1)} kW</text>
                   <text x="415" y="68" fill="#34d399" fontSize="8" fontWeight="bold" textAnchor="end">SUPPLY AIR</text>
-                  <text x="415" y="78" fill="#94a3b8" fontSize="7" textAnchor="end">{cfm.toLocaleString()} CFM</text>
+                  <text x="415" y="76" fill="#94a3b8" fontSize="6.5" textAnchor="end">
+                    Cool: {Math.round(effectiveSatSummer)}°F | Heat: {Math.round(effectiveSatWinter)}°F
+                  </text>
+                  <text x="415" y="84" fill="#94a3b8" fontSize="6.5" textAnchor="end">{cfm.toLocaleString()} CFM</text>
                   <text x="220" y="152" fill="#cbd5e1" fontSize="10" fontWeight="bold" textAnchor="middle">AIR HANDLING UNIT LAYOUT</text>
                 </svg>
               </div>
@@ -1248,20 +1488,75 @@ export default function AhuRunningCost() {
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <label className="text-[10px] font-semibold text-slate-400">Discharge Air SP (DAT)</label>
-                        <span className="text-[10px] font-bold text-emerald-400">{datSetpoint}°F</span>
+                    {/* Control Strategy */}
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-semibold text-slate-400">Discharge Temp (DAT) Control</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleChange('useSpaceLoadTimeframe', false)}
+                          className={`flex-1 py-1 text-xs font-semibold rounded border transition-all ${
+                            !useSpaceLoadTimeframe
+                              ? 'bg-sky-500/20 text-sky-400 border-sky-500/40 font-bold'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-205'
+                          }`}
+                        >
+                          Fixed DAT Setpoint
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleChange('useSpaceLoadTimeframe', true)}
+                          className={`flex-1 py-1 text-xs font-semibold rounded border transition-all ${
+                            useSpaceLoadTimeframe
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-205'
+                          }`}
+                        >
+                          Load-Based DAT
+                        </button>
                       </div>
-                      <input
-                        type="range"
-                        min="45"
-                        max="110"
-                        value={datSetpoint}
-                        onChange={(e) => setDatSetpoint(parseInt(e.target.value))}
-                        className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-emerald-500"
-                      />
                     </div>
+
+                    {useSpaceLoadTimeframe ? (
+                      <div className="space-y-1 md:col-span-2 bg-slate-900/30 p-3 rounded-lg border border-slate-850">
+                        <div className="flex justify-between">
+                          <label className="text-[10px] font-semibold text-slate-400">Estimated Space Sensible Load</label>
+                          <span className={`text-[10px] font-bold ${spaceLoadTimeframe > 0 ? 'text-emerald-400' : spaceLoadTimeframe < 0 ? 'text-orange-400' : 'text-slate-400'}`}>
+                            {spaceLoadTimeframe > 0 ? `+${spaceLoadTimeframe.toLocaleString()} Btu/h (Cooling)` : spaceLoadTimeframe < 0 ? `${spaceLoadTimeframe.toLocaleString()} Btu/h (Heating)` : 'Neutral (0 Btu/h)'}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-300000"
+                          max="300000"
+                          step="10000"
+                          value={spaceLoadTimeframe}
+                          onChange={(e) => handleChange('spaceLoadTimeframe', parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-emerald-500"
+                        />
+                        <div className="text-[10px] flex justify-between pt-1 border-t border-slate-900/60 mt-1">
+                          <span className="text-slate-450">Calculated Required DAT:</span>
+                          <span className="text-slate-200 font-semibold font-mono">
+                            {(ratSetpoint - spaceLoadTimeframe / (1.08 * cfm)).toFixed(1)}°F
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-[10px] font-semibold text-slate-400">Discharge Air SP (DAT)</label>
+                          <span className="text-[10px] font-bold text-emerald-400">{datSetpoint}°F</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="45"
+                          max="110"
+                          value={datSetpoint}
+                          onChange={(e) => setDatSetpoint(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-emerald-500"
+                        />
+                      </div>
+                    )}
 
                     {/* Return Air */}
                     {!isOaUnit && (
@@ -1374,7 +1669,7 @@ export default function AhuRunningCost() {
                     <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl">
                       <p className="text-[9.5px] font-bold text-orange-400 uppercase tracking-wider">Heating Load</p>
                       <p className="text-base font-black text-white mt-0.5">${totalPeriodHeatCost.toFixed(2)}</p>
-                      <p className="text-[9px] text-slate-500 mt-0.5">Max {maxHeatingKbtu.toFixed(0)} kBTU/h | {totalPeriodHeatFuel.toFixed(1)} {heatingSource === 'water' ? 'therms' : 'klb'}</p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Max {maxHeatingKbtu.toFixed(0)} kBTU/h | {totalPeriodHeatFuel.toFixed(1)} {heatingSource === 'water' ? (gasRateUnit === 'ccf' ? 'CCU' : 'therms') : 'klb'}</p>
                     </div>
                   </div>
 
@@ -1542,6 +1837,20 @@ export default function AhuRunningCost() {
                   )}
 
                   {/* Hourly details metrics grid */}
+                  {activeHourData && activeHourData.datClamped && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl text-xs flex items-start gap-2 mb-3 text-left w-full">
+                      <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-400" />
+                      <div>
+                        <span className="font-bold text-amber-400">Required Supply Temperature Clamped:</span>{' '}
+                        The required DAT to maintain the space temperature at this hour was calculated as{' '}
+                        <span className="font-bold text-white">{activeHourData.datRequired.toFixed(1)}°F</span>, 
+                        which is outside the standard operating range of [50°F, 120°F]. The supply air has been clamped to{' '}
+                        <span className="font-bold text-white">{activeHourData.dat.toFixed(0)}°F</span>. 
+                        The space setpoint may not be fully maintained. Increase airflow (CFM) or reduce the space load.
+                      </div>
+                    </div>
+                  )}
+
                   {activeHourData && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-900/30 border border-slate-850 p-4 rounded-xl">
                       <div className="space-y-0.5">
