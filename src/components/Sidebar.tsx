@@ -24,7 +24,7 @@ export const TOOLS: Tool[] = [
   {
     id: 'chiller-tonnage',
     name: 'Chiller Tonnage',
-    category: 'HVAC',
+    category: 'District Energy',
     description: 'Calculate cooling capacity, COP, EER, and chiller electrical load.'
   },
   {

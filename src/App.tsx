@@ -33,8 +33,8 @@ const CALCULATOR_REGISTRY: Record<string, {
 }> = {
   'chiller-tonnage': {
     title: 'Chiller Tonnage & Performance',
-    category: 'HVAC',
-    description: 'Determine evaporator cooling capacity (Tons), system delta-T, COP/EER, and power ratios.',
+    category: 'District Energy',
+    description: 'Determine evaporator cooling capacity (Tons), low delta-T syndrome penalties, central plant auxiliary load efficiency, and condenser heat balance.',
     source: 'ASHRAE Handbook - HVAC Systems and Equipment (Chapter 43: Liquid-Chilling Systems)',
     component: ChillerTonnage
   },
