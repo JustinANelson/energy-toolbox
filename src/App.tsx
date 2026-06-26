@@ -22,6 +22,7 @@ import SimplePayback from './components/calculators/SimplePayback';
 import CarbonEmissions from './components/calculators/CarbonEmissions';
 import LangelierSatIndex from './components/calculators/LangelierSatIndex';
 import WaterPurityTemp from './components/calculators/WaterPurityTemp';
+import StrobicFanExhaust from './components/calculators/StrobicFanExhaust';
 
 // Map tool ID to details and component
 const CALCULATOR_REGISTRY: Record<string, {
@@ -65,6 +66,13 @@ const CALCULATOR_REGISTRY: Record<string, {
     description: 'Estimate the annual operational costs of an Air Handling Unit (AHU), including fan power, cooling systems (DX vs. CHW), and heating systems (Hot Water vs. Steam).',
     source: 'ASHRAE Handbook - HVAC Applications (Chapter 37: Owning and Operating Costs)',
     component: AhuRunningCost
+  },
+  'strobic-exhaust': {
+    title: 'Lab Strobic Exhaust Fan VFD Savings',
+    category: 'HVAC',
+    description: 'Calculate the annual operating cost of laboratory Strobic high-velocity dilution exhaust fans and evaluate savings from VFD speed control and duct static pressure reset.',
+    source: 'ASHRAE Laboratory Design Guide / ANSI/AIHA Z9.5 Laboratory Ventilation Standard',
+    component: StrobicFanExhaust
   },
   'room-lumen': {
     title: 'Lighting Lumen Method (Room Calc)',

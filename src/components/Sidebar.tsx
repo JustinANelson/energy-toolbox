@@ -52,6 +52,12 @@ export const TOOLS: Tool[] = [
     description: 'Calculate the annual operating cost of an air handler (fans, cooling source, and heating source).'
   },
   {
+    id: 'strobic-exhaust',
+    name: 'Lab Strobic Exhaust',
+    category: 'HVAC',
+    description: 'Calculate lab exhaust fan running costs and VFD + static pressure reset controls savings.'
+  },
+  {
     id: 'room-lumen',
     name: 'Room Calc (Lumen)',
     category: 'Lighting',
